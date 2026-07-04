@@ -1,0 +1,124 @@
+#include <LiquidCrystal_I2C.h>
+#include "SoftwareSerial.h"
+#include "DFRobotDFPlayerMini.h"
+
+#define BUZZER_PIN 3
+#define FAN_PIN 7
+
+SoftwareSerial mySoftwareSerial(10, 11); // RX, TX
+DFRobotDFPlayerMini myDFPlayer;
+LiquidCrystal_I2C lcd(0x27, 16, 2);
+
+int prevState = -1; // -1 = not set yet, 0 = Normal, 1 = Alert, 2 = Critical
+
+void setup() {
+  pinMode(BUZZER_PIN, OUTPUT);
+  pinMode(FAN_PIN, OUTPUT);
+  Serial.begin(9600);
+
+  // LCD setup
+  lcd.init();
+  lcd.backlight();
+  lcd.print("Gas Detector");
+  lcd.setCursor(0, 1);
+  lcd.print("Initializing...");
+  delay(5000);
+  lcd.clear();
+
+  // DFPlayer setup
+  mySoftwareSerial.begin(9600);
+  if (!myDFPlayer.begin(mySoftwareSerial)) {
+    Serial.println("DFPlayer Mini not found!");
+    lcd.clear();
+    lcd.print("Audio Module");
+    lcd.setCursor(0, 1);
+    lcd.print("Error!");
+    while (true);
+  }
+  myDFPlayer.volume(30); // 0–30 VOLUME
+
+  // --- Initial sensor check after stabilization ---
+  delay(2000); // wait for sensor to settle
+  int initialValue = analogRead(A0);
+  Serial.print("Initial Value: ");
+  Serial.println(initialValue);
+
+  lcd.setCursor(0, 0);
+  lcd.print("Gas Level: ");
+  lcd.print(initialValue);
+  lcd.print("   ");
+
+  lcd.setCursor(0, 1);
+
+  if (initialValue < 250) {
+    lcd.print("Status: Normal   ");
+    myDFPlayer.playMp3Folder(3);  // Play "Normal" once at startup
+    delay(1000);                  // Wait full 1s for audio
+    prevState = 0;
+  } else if (initialValue > 512) {
+    lcd.print("CRITICAL DANGER!");
+    myDFPlayer.playMp3Folder(1);
+    digitalWrite(BUZZER_PIN, HIGH);
+    digitalWrite(FAN_PIN, HIGH);
+    delay(6000);
+    prevState = 2;
+  } else {
+    lcd.print("ALERT! High Gas! ");
+    myDFPlayer.playMp3Folder(2);
+    digitalWrite(BUZZER_PIN, HIGH);
+    digitalWrite(FAN_PIN, HIGH);
+    delay(2000);
+    prevState = 1;
+  }
+}
+
+void loop() {
+  int sensorValue = analogRead(A0);
+  Serial.println(sensorValue);
+
+  // Display sensor value
+  lcd.setCursor(0, 0);
+  lcd.print("Gas Level: ");
+  lcd.print(sensorValue);
+  lcd.print("   ");
+
+  lcd.setCursor(0, 1);
+
+  // --- CRITICAL ---
+  if (sensorValue > 512) {
+    lcd.print("CRITICAL DANGER!");
+    if (prevState != 2) { // only play once when entering critical
+      myDFPlayer.playMp3Folder(1);
+      digitalWrite(BUZZER_PIN, HIGH);
+      digitalWrite(FAN_PIN, HIGH);
+      delay(6500); // wait full 6s for audio 1
+    }
+    prevState = 2;
+  }
+  // --- ALERT ---
+  else if (sensorValue > 250) {
+    lcd.print("ALERT! High Gas! ");
+    if (prevState != 1) { // only play once when entering alert
+      myDFPlayer.playMp3Folder(2);
+      digitalWrite(BUZZER_PIN, HIGH);
+      digitalWrite(FAN_PIN, HIGH);
+      delay(2500); // wait full 2s for audio 2
+    }
+    prevState = 1;
+  }
+  // --- NORMAL ---
+  else {
+    lcd.print("Status: Normal   ");
+    digitalWrite(BUZZER_PIN, LOW);
+    digitalWrite(FAN_PIN, LOW);
+
+    // If we just dropped from ALERT or CRITICAL to NORMAL
+    if (prevState == 1 || prevState == 2) {
+      myDFPlayer.playMp3Folder(3);
+      delay(1000); // wait full 1s for audio 3
+    }
+    prevState = 0;
+  }
+
+  delay(200); // small stability delay
+}
