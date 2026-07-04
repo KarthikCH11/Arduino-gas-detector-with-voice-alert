@@ -299,7 +299,7 @@ This project is licensed under the MIT License — see the [LICENSE](LICENSE) fi
 ## 👤 Author
 
 **Karthik**
-- GitHub: [@KarthikCH11](https://github.com/yourusername)
+- GitHub: [@KarthikCH11](https://github.com/KarthikCH11)
 
 ---
 
