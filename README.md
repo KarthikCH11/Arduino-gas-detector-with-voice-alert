@@ -1,4 +1,4 @@
-# 🛡️ GasGuard – Smart Gas Leak Detector with Voice Alerts
+# 🛡️ Smart Gas Leak Detector with Voice Alerts (Arduino)
 
 > An Arduino-based intelligent gas leak detection system featuring real-time monitoring, multi-level audio/voice alerts, automatic exhaust fan activation, and a live LCD status display.
 
